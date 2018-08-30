@@ -16,13 +16,19 @@
         <span class="validationError">Please correct the problems below and resubmit.</span>
       </div>
 		
-		<h3>Deliver my taco masterpiece to...</h3>
+		<h3>Masterpieces created in this order: </h3>
+		<div th:each="taco : *{tacos}">
+			<div th:text="${taco.name}"></div>
+		</div>
+		<br/>
 		
-		<label for="name">Name:</label>
-		<input type="text" th:field="*{name}"/>
+		<h3>Deliver my taco masterpieces to...</h3>
+		
+		<label for="lastName">Name:</label>
+		<input type="text" th:field="*{lastName}"/>
 		<span class="validationError"
-            th:if="${#fields.hasErrors('name')}" 
-            th:errors="*{name}">Name Error</span>
+            th:if="${#fields.hasErrors('lastName')}" 
+            th:errors="*{lastName}">Name Error</span>
         <br/>
         
 		<label for="street">Street address:</label>

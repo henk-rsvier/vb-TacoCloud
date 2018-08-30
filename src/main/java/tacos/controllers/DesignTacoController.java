@@ -7,44 +7,67 @@ import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.SessionAttributes;
 
 import lombok.extern.slf4j.Slf4j;
-import tacos.domain.Design;
+import tacos.domain.Taco;
+import tacos.repositories.IngredientRepository;
+import tacos.repositories.TacoRepository;
 import tacos.domain.Ingredient;
 import tacos.domain.Ingredient.Type;
+import tacos.domain.Order;
 
 @Slf4j
 @Controller
 @RequestMapping("/design")
+@SessionAttributes("order")
 public class DesignTacoController {
 	
+	private final TacoRepository tacoRepository;
+	private final IngredientRepository ingredientRepository;
+	
+	
+	@Autowired
+	public DesignTacoController(TacoRepository tacoRepository, IngredientRepository ingredientRepository) {
+		this.tacoRepository = tacoRepository;
+		this.ingredientRepository = ingredientRepository;
+	}
+	
+	@ModelAttribute(name="order")
+	public Order order() {
+		return new Order();
+	}
+
 	@GetMapping
 	public String showDesignForm(Model model) {
 		
 		// Filter a list of all ingredients by type and add those lists to the model
-		List<Ingredient> ingredients = findAllIngredients();		
+		Iterable<Ingredient> ingredients = ingredientRepository.findAll();	
+		
 		Type[] types = Ingredient.Type.values();
 		for (Type type : types) {
 			model.addAttribute(type.toString().toLowerCase(), filterByType(ingredients, type));
-		}
-		
-		model.addAttribute("design", new Design());
+		}		
+		model.addAttribute("taco", new Taco());
 		return "design";
 	}
 	
 	@PostMapping
-	public String processDesign(@Valid Design design, Errors errors, Model model) {
+	public String processDesign(@Valid Taco design, Errors errors, @ModelAttribute Order order, Model model) {
 		if (errors.hasErrors()) {
-						
+			
+			// TODO: check for other ways to make the ingredients visible after submitting an invalid form
 			// Filter a list of all ingredients by type and add those lists to the model
-			List<Ingredient> ingredients = findAllIngredients();
+			Iterable<Ingredient> ingredients = ingredientRepository.findAll();
 			Type[] types = Ingredient.Type.values();
 			for (Type type : types) {
 				model.addAttribute(type.toString().toLowerCase(), filterByType(ingredients, type));
@@ -53,30 +76,20 @@ public class DesignTacoController {
 			log.info("Processing design contains errors: {}", design);
 			return "design";
 		}
+		
 		log.info("Processing design: {}", design);
+		Taco savedTaco = tacoRepository.save(design);
+		order.addTaco(savedTaco);
+		log.info("Processed design: {}", savedTaco);
+		
 		return "redirect:/orders/current";
 	}
 	
-	private List<Ingredient> filterByType(List<Ingredient> ingredients, Type type) {
-		return ingredients
+	private List<Ingredient> filterByType(Iterable<Ingredient> ingredients, Type type) {
+		return ((List<Ingredient>)ingredients)
 				.stream()
 				.filter(x -> x.getType().equals(type))
 				.collect(Collectors.toList());
 	}
-	
-	// Temporary methode to simulate repository functionality
-	private List<Ingredient> findAllIngredients() {
-		List<Ingredient> ingredients = Arrays.asList(
-				new Ingredient("FLTO", "Flour Tortilla", Type.WRAP),
-				new Ingredient("COTO", "Corn Tortilla", Type.WRAP),
-				new Ingredient("GRBF", "Ground Beef", Type.PROTEIN),
-				new Ingredient("CARN", "Carnitas", Type.PROTEIN),
-				new Ingredient("TMTO", "Diced Tomatoes", Type.VEGGIES),
-				new Ingredient("LETC", "Lettuce", Type.VEGGIES),
-				new Ingredient("CHED", "Cheddar", Type.CHEESE),
-				new Ingredient("JACK", "Monterrey Jack", Type.CHEESE),
-				new Ingredient("SLSA", "Salsa", Type.SAUCE),
-				new Ingredient("SRCR", "Sour Cream", Type.SAUCE));
-		return ingredients;		
-	}
+
 }
